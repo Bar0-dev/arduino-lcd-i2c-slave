@@ -2,126 +2,93 @@
 #include <LiquidCrystal.h>
 #include <Wire.h>
 
-#define CHAR_LIMIT 32
-#define CHAR_ON '+'
-#define CHAR_OFF '-'
+#define S_WIDTH 16
+#define S_HEIGHT 2
+#define S_ADDR 80
+#define NUM_OF_DOTS 8
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
+
 const int rs = 3, en = 2, d4 = 7, d5 = 8, d6 = 9, d7 = 10;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-String message;
 
-//custon button character
-// byte button_off[] = {
-//   0x00,
-//   0x0E,
-//   0x11,
-//   0x11,
-//   0x11,
-//   0x11,
-//   0x0E,
-//   0x00
-// };
-// byte button_on[] = {
-//   0x00,
-//   0x0E,
-//   0x1F,
-//   0x1F,
-//   0x1F,
-//   0x1F,
-//   0x0E,
-//   0x00
-// };
-byte button_off[] = {
-  0x00,
-  0x00,
-  0x0E,
-  0x0E,
-  0x1F,
-  0x1F,
-  0x00,
-  0x00
-};
-byte button_on[] = {
-  0x00,
-  0x00,
-  0x00,
-  0x0E,
-  0x1F,
-  0x1F,
-  0x00,
-  0x00
-};
-
-void show_on_lcd(String message){
-  String line_1 = "";
-  String line_2 = "";
-  uint8_t new_line_index;
-  lcd.setCursor(0,0);  
-  if(message.length() > CHAR_LIMIT){
-    lcd.print("Msg. too long!");
-    return;
+void parse_new_char_string(String data_str, byte data_arr[]){
+  String remain;
+  int del_index, bracket_start, bracket_end;
+  byte n;
+  remain = data_str;
+  bracket_start = remain.indexOf('[');
+  bracket_end = remain.indexOf(']');
+  remain = remain.substring(bracket_start+1, bracket_end);
+  for(int i=0; i<NUM_OF_DOTS; i++){
+    del_index = remain.indexOf(',');
+    n = (byte)remain.substring(0,del_index).toInt();
+    data_arr[i] = n;
+    remain = remain.substring(del_index+1);
   }
-  if(message.indexOf(CHAR_ON) != -1 || message.indexOf(CHAR_OFF) != -1){
-    for(int i=0; i<16; i++){
-      if(i==8){
-        lcd.setCursor(0,1);
-      }
-      if(message.charAt(i) == CHAR_OFF){
-        lcd.write(byte(0));
-      }
-      if(message.charAt(i) == CHAR_ON){
-        lcd.write(byte(1));
-      }
-    }
-    return;
-  }
-  if(message.indexOf('\n') != -1){
-    new_line_index = message.indexOf('\n');
-    line_1 = message.substring(0, new_line_index);
-    line_2 = message.substring(new_line_index+1, CHAR_LIMIT);
-    lcd.print(line_1);
-    lcd.setCursor(0,1);
-    lcd.print(line_2);
-    return;
-  }
-  if(message.length()>16){
-    line_1 = message.substring(0, new_line_index);
-    line_2 = message.substring(new_line_index, CHAR_LIMIT);
-    lcd.print(line_1);
-    lcd.setCursor(0,1);
-    lcd.print(line_2);
-    return;
-  }
-  lcd.print(message);
 }
 
-void receiveEvent(int howMany) {
-  message = "";
-  while (1 < Wire.available()) { // loop through all but the last
-    char c = Wire.read(); // receive byte as a character
-    message += c;
+void handleReceive(int numOfBytes){
+  String request, cmd, parameters, data_str;
+  int param_beg_index, param_end_index, par_del_index, par1, par2;
+  byte data[NUM_OF_DOTS];
+  while(Wire.available()){
+    char c = Wire.read();
+    request += c;
   }
-  int x = Wire.read();    // receive byte as an integer
-  Serial.println('\n' + message + '\n');
-  show_on_lcd(message);
+  if(!request.indexOf('(') && !request.indexOf(')')) return;
+  Serial.print(request);
+  param_beg_index = request.indexOf('(');
+  param_end_index = request.indexOf(')');
+  cmd = request.substring(0,param_beg_index);
+  parameters = request.substring(param_beg_index+1, param_end_index);
+  if(cmd == "print") lcd.print(parameters);
+  if(cmd == "clear") lcd.clear();
+  if(cmd == "home") lcd.home();
+  if(cmd == "setCursor") {
+    par_del_index = parameters.indexOf(",");
+    if(par_del_index){
+      par1 = parameters.substring(0,par_del_index).toInt();
+      par2 = parameters.substring(par_del_index+1).toInt();
+      if(par1<S_WIDTH && par2<S_HEIGHT) lcd.setCursor(par1, par2);
+    }
+  }
+  if(cmd == "write") lcd.write(parameters[0]);
+  if(cmd == "cursor") lcd.cursor();
+  if(cmd == "noCursor") lcd.noCursor();
+  if(cmd == "blink") lcd.blink();
+  if(cmd == "noBlink") lcd.noBlink();
+  if(cmd == "display") lcd.display();
+  if(cmd == "noDisplay") lcd.noDisplay();
+  if(cmd == "scrollDisplayLeft") lcd.scrollDisplayLeft();
+  if(cmd == "scrollDisplayRight") lcd.scrollDisplayRight();
+  if(cmd == "autoscroll") lcd.autoscroll();
+  if(cmd == "noAutoscroll") lcd.noAutoscroll();
+  if(cmd == "leftToRight") lcd.leftToRight();
+  if(cmd == "rightToLeft") lcd.rightToLeft();
+  // if(cmd == "createChar") {
+  //   par_del_index = parameters.indexOf(",");
+  //   if(par_del_index){
+  //     par1 = parameters.substring(0,par_del_index).toInt();
+  //     data_str = parameters.substring(par_del_index+1);
+  //     parse_new_char_string(data_str, data);
+  //     if(par1<8) lcd.createChar(par1, data);
+  //   }
+  // }
 }
 
 void setup() {
   //LCD setup
-  lcd.begin(16, 2);
-  lcd.print("Booting...");
-  lcd.createChar(0, button_off);
-  lcd.createChar(1, button_on);
-  //I2C setup
-  Wire.begin(8);
-  Wire.onReceive(receiveEvent);
-  //Debug serial
+  lcd.begin(S_WIDTH, S_HEIGHT);
+  //i2c setup
+  Wire.begin(S_ADDR);
+  Wire.onReceive(handleReceive);
+  //serial debug
   Serial.begin(9600);
 }
 
 void loop() {
-  delay(100);
+
 }
 
