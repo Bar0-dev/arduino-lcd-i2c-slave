@@ -58,7 +58,7 @@ void setup() {
   Wire.begin(S_ADDR);
   Wire.onReceive(handleReceive);
   //serial debug
-  Serial.begin(9600);
+  // Serial.begin(9600);
 }
 
 void loop() {
