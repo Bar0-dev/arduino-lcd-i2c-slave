@@ -13,32 +13,14 @@
 const int rs = 3, en = 2, d4 = 7, d5 = 8, d6 = 9, d7 = 10;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-void parse_new_char_string(String data_str, byte data_arr[]){
-  String remain;
-  int del_index, bracket_start, bracket_end;
-  byte n;
-  remain = data_str;
-  bracket_start = remain.indexOf('[');
-  bracket_end = remain.indexOf(']');
-  remain = remain.substring(bracket_start+1, bracket_end);
-  for(int i=0; i<NUM_OF_DOTS; i++){
-    del_index = remain.indexOf(',');
-    n = (byte)remain.substring(0,del_index).toInt();
-    data_arr[i] = n;
-    remain = remain.substring(del_index+1);
-  }
-}
-
 void handleReceive(int numOfBytes){
-  String request, cmd, parameters, data_str;
+  String request, cmd, parameters;
   int param_beg_index, param_end_index, par_del_index, par1, par2;
-  byte data[NUM_OF_DOTS];
   while(Wire.available()){
     char c = Wire.read();
     request += c;
   }
   if(!request.indexOf('(') && !request.indexOf(')')) return;
-  Serial.print(request);
   param_beg_index = request.indexOf('(');
   param_end_index = request.indexOf(')');
   cmd = request.substring(0,param_beg_index);
@@ -67,15 +49,6 @@ void handleReceive(int numOfBytes){
   if(cmd == "noAutoscroll") lcd.noAutoscroll();
   if(cmd == "leftToRight") lcd.leftToRight();
   if(cmd == "rightToLeft") lcd.rightToLeft();
-  // if(cmd == "createChar") {
-  //   par_del_index = parameters.indexOf(",");
-  //   if(par_del_index){
-  //     par1 = parameters.substring(0,par_del_index).toInt();
-  //     data_str = parameters.substring(par_del_index+1);
-  //     parse_new_char_string(data_str, data);
-  //     if(par1<8) lcd.createChar(par1, data);
-  //   }
-  // }
 }
 
 void setup() {
